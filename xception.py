@@ -253,7 +253,7 @@ if __name__ == '__main__':
         file.write(f"Arquivo com as Classes: {args.classes};\n\n")
 
         file.write(f"\tPre-treino (apenas ultima camada):\n")
-        file.write(f"Epocas: {args.epoch_pre};\n")
+        file.write(f"Epocas: {args.epochs_pre};\n")
         file.write(f"Batch Size: {args.batch_size_pre};\n")
         file.write(f"Learning Rate: {args.lr_pre};\n")
 
