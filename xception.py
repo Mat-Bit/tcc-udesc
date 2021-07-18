@@ -27,22 +27,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument('name')
 parser.add_argument('dataset_root')
 parser.add_argument('result_root')
-parser.add_argument('--epochs_pre', type=int, default=10)
-parser.add_argument('--epochs_fine', type=int, default=40)
+parser.add_argument('--epochs_pre', type=int, default=15)
+parser.add_argument('--epochs_fine', type=int, default=70)
 parser.add_argument('--batch_size_pre', type=int, default=16)
 parser.add_argument('--batch_size_fine', type=int, default=32)
 parser.add_argument('--lr_pre', type=float, default=1e-3)
-parser.add_argument('--lr_fine', type=float, default=4e-4)
+parser.add_argument('--lr_fine', type=float, default=2e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.2)
 parser.add_argument('--dropout', type=float, default=0.5)
 
 
 METRICS = [
-    # tf.keras.metrics.TruePositives(name='tp'),
-    # tf.keras.metrics.FalsePositives(name='fp'),
-    # tf.keras.metrics.TrueNegatives(name='tn'),
-    # tf.keras.metrics.FalseNegatives(name='fn'), 
     tf.keras.metrics.BinaryAccuracy(name='accuracy'),
     tf.keras.metrics.Precision(name='precision'),
     tf.keras.metrics.Recall(name='recall'),
@@ -298,11 +294,10 @@ def main(args):
         batch_size=args.batch_size_pre
     )
 
-    train_predictions_baseline = model.predict(train_dataset)
+    # train_predictions_baseline = model.predict(train_dataset)
     test_predictions_baseline = model.predict(test_dataset)
 
     # Plot the ROC curve
-    plot_roc("Train", train_labels, train_predictions_baseline)
     plot_roc("Test", test_labels, test_predictions_baseline)
     plt.savefig(os.path.join(args.result_root, 'auroc.png'))
     plt.clf()
