@@ -34,7 +34,7 @@ parser.add_argument('--batch_size_fine', type=int, default=32)
 parser.add_argument('--lr_pre', type=float, default=1e-3)
 parser.add_argument('--lr_fine', type=float, default=5e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
-parser.add_argument('--val_split', type=float, default=0.2)
+parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
 
 
@@ -244,8 +244,8 @@ def main(args):
 
     # compile model
     model.compile(
-        loss=binary_crossentropy(from_logits=True),
-        optimizer=Adam(learning_rate=args.lr_pre, episilon=0.1),
+        loss=binary_crossentropy,
+        optimizer=Adam(learning_rate=args.lr_pre, epsilon=0.1),
         metrics=METRICS
     )
 
@@ -283,7 +283,7 @@ def main(args):
 
     # recompile
     model.compile(
-        loss=binary_crossentropy(from_logits=True),
+        loss=binary_crossentropy,
         optimizer=Adam(learning_rate=args.lr_fine, epsilon=0.1),
         metrics=METRICS
     )
@@ -330,6 +330,6 @@ def main(args):
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    print("GPU is", "available" if tf.test.is_gpu_available() else "NOT AVAILABLE")
+    print("GPUs: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
     main(args)
