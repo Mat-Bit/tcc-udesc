@@ -322,7 +322,6 @@ def main(args):
     # evaluate 
     test_predictions_baseline = model.evaluate(test_dataset, batch_size=args.batch_size_pre)
 
-    print("Test accuracy on test set: %0.4f" % (test_predictions_baseline[1]))
 
     # Plot the ROC curve
     plot_roc("Test", test_labels, test_predictions_baseline)
