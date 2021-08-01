@@ -311,15 +311,18 @@ def main(args):
 
     plot_path = os.path.join(result_path_name, 'fine_tunning_')
     plot_metrics(hist_fine, plot_path, 'Fine Tunning')
-    
 
-    test_dataset = generate_from_paths(
+
+    test_dataset = generate_from_paths_and_labels(
         input_paths=test_input_paths,
+        labels=test_labels,
         batch_size=args.batch_size_pre
     )
 
-    # TODO use only the first parameter of the 'test_dataset'
-    test_predictions_baseline = model.predict(test_dataset)
+    # evaluate 
+    test_predictions_baseline = model.evaluate(test_dataset, batch_size=args.batch_size_pre)
+
+    print("Test accuracy on test set: %0.4f" % (test_predictions_baseline[1]))
 
     # Plot the ROC curve
     plot_roc("Test", test_labels, test_predictions_baseline)
