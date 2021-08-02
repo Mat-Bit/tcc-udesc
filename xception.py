@@ -28,11 +28,11 @@ parser.add_argument('name')
 parser.add_argument('dataset_root')
 parser.add_argument('result_root')
 parser.add_argument('--epochs_pre', type=int, default=10)
-parser.add_argument('--epochs_fine', type=int, default=20)
+parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=32)
 parser.add_argument('--batch_size_fine', type=int, default=32)
 parser.add_argument('--lr_pre', type=float, default=1e-3)
-parser.add_argument('--lr_fine', type=float, default=5e-4)
+parser.add_argument('--lr_fine', type=float, default=1e-3)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -101,6 +101,22 @@ def plot_metrics(history, name_path, title):
         plt.legend()
     plt.savefig(name_path + 'fit_metrics.png')
     plt.clf()
+
+
+# Define the 'plot_auroc' function
+def plot_auroc(name, labels, predictions, **kwargs):
+    fp, tp, _ = roc_curve(labels, predictions)
+    auROC = 1 - roc_auc_score(labels, predictions)
+    plt.plot(fp, tp, label=name + ' (AUC = %0.3f)' % auROC, linewidth=2, **kwargs)
+    plt.xlabel('False positives [%]')
+    plt.ylabel('True positives [%]')
+    plt.xlim([-0.05,1.05])
+    plt.ylim([-0.05,1.05])
+    plt.legend(loc='lower right')
+
+    plt.savefig(os.path.join(args.result_root, 'auroc.png'))
+    plt.clf()
+
 
 
 def plot_roc(name, labels, predictions, **kwargs):
@@ -319,14 +335,29 @@ def main(args):
         batch_size=args.batch_size_pre
     )
 
-    # evaluate 
-    test_predictions_baseline = model.evaluate(test_dataset, batch_size=args.batch_size_pre)
+    # Evaluate the model on the test dataset
+    score = model.evaluate(
+        test_dataset,
+        steps=math.ceil(len(test_input_paths) / args.batch_size_pre),
+        verbose=1
+    )
+
+    print('Test loss:', score[0])
+    print('Test accuracy:', score[1])
+
+    # Plot the auroc graph on the test dataset
+    # plot_path = os.path.join(result_path_name, 'test_auroc_')
+    # plot_auroc(model, test_dataset, plot_path, 'Test')
 
 
-    # Plot the ROC curve
-    plot_roc("Test", test_labels, test_predictions_baseline)
-    plt.savefig(os.path.join(args.result_root, 'auroc.png'))
-    plt.clf()
+    # plot_path = os.path.join(result_path_name, 'auroc_')
+    # plot_auroc(hist_fine, plot_path, 'AUROC')
+
+
+    # # Plot the ROC curve
+    # plot_roc("Test", test_labels, test_predictions_baseline)
+    # plt.savefig(os.path.join(args.result_root, 'auroc.png'))
+    # plt.clf()
 
 
 if __name__ == '__main__':
