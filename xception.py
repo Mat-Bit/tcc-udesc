@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import time
 
 from tensorflow.keras.applications.xception import Xception, preprocess_input
 from tensorflow.keras.optimizers import Adam
@@ -32,7 +33,7 @@ parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=32)
 parser.add_argument('--batch_size_fine', type=int, default=32)
 parser.add_argument('--lr_pre', type=float, default=1e-3)
-parser.add_argument('--lr_fine', type=float, default=1e-3)
+parser.add_argument('--lr_fine', type=float, default=5e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -104,32 +105,32 @@ def plot_metrics(history, name_path, title):
 
 
 # Define the 'plot_auroc' function
-def plot_auroc(name, labels, predictions, **kwargs):
-    fp, tp, _ = roc_curve(labels, predictions)
-    auROC = 1 - roc_auc_score(labels, predictions)
-    plt.plot(fp, tp, label=name + ' (AUC = %0.3f)' % auROC, linewidth=2, **kwargs)
-    plt.xlabel('False positives [%]')
-    plt.ylabel('True positives [%]')
-    plt.xlim([-0.05,1.05])
-    plt.ylim([-0.05,1.05])
-    plt.legend(loc='lower right')
+# def plot_auroc(name, labels, predictions, **kwargs):
+#     fp, tp, _ = roc_curve(labels, predictions)
+#     auROC = 1 - roc_auc_score(labels, predictions)
+#     plt.plot(fp, tp, label=name + ' (AUC = %0.3f)' % auROC, linewidth=2, **kwargs)
+#     plt.xlabel('False positives [%]')
+#     plt.ylabel('True positives [%]')
+#     plt.xlim([-0.05,1.05])
+#     plt.ylim([-0.05,1.05])
+#     plt.legend(loc='lower right')
 
-    plt.savefig(os.path.join(args.result_root, 'auroc.png'))
-    plt.clf()
+#     plt.savefig(os.path.join(args.result_root, 'auroc.png'))
+#     plt.clf()
 
 
 
-def plot_roc(name, labels, predictions, **kwargs):
-    fp, tp, _ = roc_curve(labels, predictions)
+# def plot_roc(name, labels, predictions, **kwargs):
+#     fp, tp, _ = roc_curve(labels, predictions)
 
-    plt.plot(fp, tp, label=name, linewidth=2, **kwargs)
-    plt.xlabel('False positives [%]')
-    plt.ylabel('True positives [%]')
-    plt.xlim([-0.05,0.40])
-    plt.ylim([0.6,1.05])
-    plt.grid(True)
-    ax = plt.gca()
-    ax.set_aspect('equal')
+#     plt.plot(fp, tp, label=name, linewidth=2, **kwargs)
+#     plt.xlabel('False positives [%]')
+#     plt.ylabel('True positives [%]')
+#     plt.xlim([-0.05,0.40])
+#     plt.ylim([0.6,1.05])
+#     plt.grid(True)
+#     ax = plt.gca()
+#     ax.set_aspect('equal')
 
 
 def main(args):
@@ -151,23 +152,6 @@ def main(args):
     if os.path.exists(result_path_name) is False:
         os.makedirs(result_path_name)
 
-    with open(f'{result_path_name}/parameters.txt', 'w') as file:
-        file.write(f"\tTeste: {args.name}\n\n")
-
-        file.write(f"Diretorio Dataset: {args.dataset_root};\n")
-        file.write(f"Diretorio dos Resultados: {result_path_name};\n\n")
-
-        file.write(f"Dropout Regularization: {args.dropout};\n\n")
-
-        file.write(f"\tPre-treino (apenas ultima camada):\n")
-        file.write(f"Epocas: {args.epochs_pre};\n")
-        file.write(f"Batch Size: {args.batch_size_pre};\n")
-        file.write(f"Learning Rate: {args.lr_pre};\n\n")
-
-        file.write(f"\tFine Tunning de toda Arquitetura:\n")
-        file.write(f"Epocas: {args.epochs_fine};\n")
-        file.write(f"Batch Size: {args.batch_size_fine};\n")
-        file.write(f"Learning Rate: {args.lr_fine};\n")
 
     classes = os.listdir(args.dataset_root)
     num_classes = len(classes)
@@ -185,6 +169,25 @@ def main(args):
                 continue
             input_paths.append(path)
             labels.append(class_id)
+
+    with open(f'{result_path_name}/parameters.txt', 'w') as file:
+        file.write(f"\tTeste: {args.name}\n\n")
+
+        file.write(f"Diretorio Dataset: {args.dataset_root};\n")
+        file.write(f"Diretorio dos Resultados: {result_path_name};\n")
+        file.write(f"Tamanho do Dataset: {len(input_paths)} imagens;\n\n")
+
+        file.write(f"Dropout Regularization: {args.dropout};\n\n")
+
+        file.write(f"\tPre-treino (apenas ultima camada):\n")
+        file.write(f"Epocas: {args.epochs_pre};\n")
+        file.write(f"Batch Size: {args.batch_size_pre};\n")
+        file.write(f"Learning Rate: {args.lr_pre};\n\n")
+
+        file.write(f"\tFine Tunning de toda Arquitetura:\n")
+        file.write(f"Epocas: {args.epochs_fine};\n")
+        file.write(f"Batch Size: {args.batch_size_fine};\n")
+        file.write(f"Learning Rate: {args.lr_fine};\n")
 
     # convert to one-hot-vector format
     labels = to_categorical(labels, num_classes=num_classes)
@@ -276,6 +279,8 @@ def main(args):
         batch_size=args.batch_size_pre
     )
 
+    # start count time
+    start_time = time.time()
 
     # train
     hist_pre = model.fit(
@@ -316,6 +321,13 @@ def main(args):
         verbose=1,
         callbacks=custom_callbacks
     )
+
+    # End time
+    end_time = time.time()
+
+    # Write the training time into the log file 'parameters.txt'
+    with open(os.path.join(result_path_name, 'parameters.txt'), 'a') as f:
+        f.write('\nTempo de treinamento: {:.2f}s.\n'.format(end_time - start_time))
 
     # ====================================================
     # Create & save result graphs
