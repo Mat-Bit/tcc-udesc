@@ -26,12 +26,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('name')
 parser.add_argument('dataset_root')
 parser.add_argument('result_root')
-parser.add_argument('--epochs_pre', type=int, default=10)
-parser.add_argument('--epochs_fine', type=int, default=50)
+parser.add_argument('--epochs_pre', type=int, default=40)
 parser.add_argument('--batch_size_pre', type=int, default=16)
-parser.add_argument('--batch_size_fine', type=int, default=16)
 parser.add_argument('--lr_pre', type=float, default=5e-4)
-parser.add_argument('--lr_fine', type=float, default=1e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -142,11 +139,6 @@ def main(args):
         file.write(f"Batch Size: {args.batch_size_pre};\n")
         file.write(f"Learning Rate: {args.lr_pre};\n\n")
 
-        file.write(f"\tFine Tunning de toda Arquitetura:\n")
-        file.write(f"Epocas: {args.epochs_fine};\n")
-        file.write(f"Batch Size: {args.batch_size_fine};\n")
-        file.write(f"Learning Rate: {args.lr_fine};\n")
-
     # convert to one-hot-vector format
     labels = to_categorical(labels, num_classes=num_classes)
 
@@ -213,9 +205,6 @@ def main(args):
     predictions = Dense(num_classes, activation='softmax')(x)
     model = Model(inputs=base_model.inputs, outputs=predictions)
 
-    # ====================================================
-    # Train only the top classifier
-    # ====================================================
     # freeze the body layers
     for layer in base_model.layers:
         layer.trainable = False
@@ -242,7 +231,7 @@ def main(args):
     start_time = time.time()
 
     # train
-    hist_pre = model.fit(
+    hist = model.fit(
         train_dataset,
         steps_per_epoch = math.ceil(
             len(train_input_paths) / args.batch_size_pre),
@@ -250,33 +239,6 @@ def main(args):
         validation_data = validation_dataset,
         validation_steps=math.ceil(
             len(val_input_paths) / args.batch_size_pre),
-        verbose=1,
-        callbacks=custom_callbacks
-    )
-
-    # ====================================================
-    # Train the whole model
-    # ====================================================
-    # set all the layers to be trainable
-    for layer in model.layers:
-        layer.trainable = True
-
-    # recompile
-    model.compile(
-        loss=binary_crossentropy,
-        optimizer=Adam(learning_rate=args.lr_fine, epsilon=0.1),
-        metrics=METRICS
-    )
-
-    # train
-    hist_fine = model.fit(
-        train_dataset,
-        steps_per_epoch = math.ceil(
-            len(train_input_paths) / args.batch_size_fine),
-        epochs = args.epochs_fine,
-        validation_data = validation_dataset,
-        validation_steps=math.ceil(
-            len(val_input_paths) / args.batch_size_fine),
         verbose=1,
         callbacks=custom_callbacks
     )
@@ -293,29 +255,17 @@ def main(args):
     # ====================================================
 
     # concatinate plot data
-    epochs = hist_pre.history['epoch']
-    acc = hist_pre.history['accuracy']
-    val_acc = hist_pre.history['val_accuracy']
-    loss = hist_pre.history['loss']
-    val_loss = hist_pre.history['val_loss']
-    precision = hist_pre.history['precision']
-    val_precision = hist_pre.history['val_precision']
-    recall = hist_pre.history['recall']
-    val_recall = hist_pre.history['val_recall']
-    auc = hist_pre.history['auc']
-    val_auc = hist_pre.history['val_auc']
-
-    epochs.extend(hist_fine.history['epoch'])
-    acc.extend(hist_fine.history['accuracy'])
-    val_acc.extend(hist_fine.history['val_accuracy'])
-    loss.extend(hist_fine.history['loss'])
-    val_loss.extend(hist_fine.history['val_loss'])
-    precision.extend(hist_fine.history['precision'])
-    val_precision.extend(hist_fine.history['val_precision'])
-    recall.extend(hist_fine.history['recall'])
-    val_recall.extend(hist_fine.history['val_recall'])
-    auc.extend(hist_fine.history['auc'])
-    val_auc.extend(hist_fine.history['val_auc'])
+    epochs = hist.history['epoch']
+    acc = hist.history['accuracy']
+    val_acc = hist.history['val_accuracy']
+    loss = hist.history['loss']
+    val_loss = hist.history['val_loss']
+    precision = hist.history['precision']
+    val_precision = hist.history['val_precision']
+    recall = hist.history['recall']
+    val_recall = hist.history['val_recall']
+    auc = hist.history['auc']
+    val_auc = hist.history['val_auc']
 
     # group all training history
     history = {
