@@ -16,7 +16,7 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve
@@ -33,7 +33,7 @@ parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=32)
 parser.add_argument('--batch_size_fine', type=int, default=32)
 parser.add_argument('--lr_pre', type=float, default=1e-3)
-parser.add_argument('--lr_fine', type=float, default=5e-4)
+parser.add_argument('--lr_fine', type=float, default=2e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -233,7 +233,15 @@ def main(args):
                                  verbose=1, 
                                  save_best_only=True, 
                                  mode='max')
-    custom_callbacks = [csv_logger, checkpoint]
+    
+    # Create a callback to early stop the training when the validation loss doesn't improve
+    early_stop = EarlyStopping(monitor='val_loss',
+                               min_delta=0.05,
+                               patience=4,
+                               verbose=1,
+                               mode='auto')
+
+    custom_callbacks = [csv_logger, checkpoint, early_stop]
 
     # ====================================================
     # Build a custom Xception
@@ -356,6 +364,11 @@ def main(args):
 
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
+
+    # Write the test accuracy and loss into the log file 'parameters.txt'
+    with open(os.path.join(result_path_name, 'parameters.txt'), 'a') as f:
+        f.write('\nTest accuracy: {:.4f}.\n'.format(score[1]))
+        f.write('Test loss: {:.4f}.\n'.format(score[0]))
 
     # Plot the auroc graph on the test dataset
     # plot_path = os.path.join(result_path_name, 'test_auroc_')
