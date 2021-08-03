@@ -62,7 +62,7 @@ def generate_from_paths_and_labels(
             yield (inputs, labels[i:i+batch_size])
 
 
-def plot_metrics(history):
+def plot_metrics(history, path):
     metrics = ['accuracy', 'loss', 'precision', 'recall']
     plt.figure(figsize=(8,8))
     if len(tf.config.experimental.list_physical_devices('GPU')) > 0:
@@ -330,17 +330,8 @@ def main(args):
         'val_auc': val_auc
     }
 
-    
-
-
-
     # Plot the training metrics
-    plot_path = os.path.join(result_path_name, 'pre_training_')
-    plot_metrics(hist_pre, plot_path, 'Pré Treino')
-
-    plot_path = os.path.join(result_path_name, 'fine_tunning_')
-    plot_metrics(hist_fine, plot_path, 'Fine Tunning')
-
+    plot_metrics(history, result_path_name)
 
     test_dataset = generate_from_paths_and_labels(
         input_paths=test_input_paths,
@@ -360,8 +351,11 @@ def main(args):
 
     # Write the test accuracy and loss into the log file 'parameters.txt'
     with open(os.path.join(result_path_name, 'parameters.txt'), 'a') as f:
-        f.write('\nTest accuracy: {:.4f}.\n'.format(score[1]))
-        f.write('Test loss: {:.4f}.\n'.format(score[0]))
+        f.write('\nTest loss: {:.4f}.\n'.format(score[0]))
+        f.write('Test accuracy: {:.4f}.\n'.format(score[1]))
+        f.write('Test precision: {:.4f}.\n'.format(score[2]))
+        f.write('Test recall: {:.4f}.\n'.format(score[3]))
+        f.write('Test auc: {:.4f}.\n'.format(score[4]))
 
 
 if __name__ == '__main__':
