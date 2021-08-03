@@ -62,26 +62,29 @@ def generate_from_paths_and_labels(
             yield (inputs, labels[i:i+batch_size])
 
 
-def plot_metrics(history, name_path, title):
+def plot_metrics(history):
     metrics = ['accuracy', 'loss', 'precision', 'recall']
     plt.figure(figsize=(8,8))
-    plt.title(title)
+    if len(tf.config.experimental.list_physical_devices('GPU')) > 0:
+        plt.title("Métricas de Treinamento e Validação Usando GPU")
+    else:
+        plt.title("Métricas de Treinamento e Validação Usando CPU")
 
     for n, metric in enumerate(metrics):
         name = metric.replace("_"," ").capitalize()
         plt.subplot(2,2,n+1)
-        plt.plot(history.epoch, history.history[metric], label='Train')
-        plt.plot(history.epoch, history.history['val_'+ metric], linestyle="--", label='Val')
+        plt.plot(history['epoch'], history[metric], label='Train')
+        plt.plot(history['epoch'], history['val_'+ metric], linestyle="--", label='Val')
         if n >= len(metrics) // 2:
             plt.xlabel('Epoch')
         plt.ylabel(name)
         if metric == 'loss':
-            plt.ylim([0, 4])
+            plt.ylim([-0.05, 1])
         else:
-            plt.ylim([0.45,1.1])
+            plt.ylim([0.45,1.05])
 
         plt.legend()
-    plt.savefig(name_path + 'fit_metrics.png')
+    plt.savefig('fit_metrics.png')
     plt.clf()
     plt.close()
 
@@ -286,6 +289,50 @@ def main(args):
     # ====================================================
     # Create & save result graphs
     # ====================================================
+
+    # concatinate plot data
+    epochs = hist_pre.history['epoch']
+    acc = hist_pre.history['accuracy']
+    val_acc = hist_pre.history['val_accuracy']
+    loss = hist_pre.history['loss']
+    val_loss = hist_pre.history['val_loss']
+    precision = hist_pre.history['precision']
+    val_precision = hist_pre.history['val_precision']
+    recall = hist_pre.history['recall']
+    val_recall = hist_pre.history['val_recall']
+    auc = hist_pre.history['auc']
+    val_auc = hist_pre.history['val_auc']
+
+    epochs.extend(hist_fine.history['epoch'])
+    acc.extend(hist_fine.history['accuracy'])
+    val_acc.extend(hist_fine.history['val_accuracy'])
+    loss.extend(hist_fine.history['loss'])
+    val_loss.extend(hist_fine.history['val_loss'])
+    precision.extend(hist_fine.history['precision'])
+    val_precision.extend(hist_fine.history['val_precision'])
+    recall.extend(hist_fine.history['recall'])
+    val_recall.extend(hist_fine.history['val_recall'])
+    auc.extend(hist_fine.history['auc'])
+    val_auc.extend(hist_fine.history['val_auc'])
+
+    # group all training history
+    history = {
+        'epoch': epochs,
+        'accuracy': acc,
+        'val_accuracy': val_acc,
+        'loss': loss,
+        'val_loss': val_loss,
+        'precision': precision,
+        'val_precision': val_precision,
+        'recall': recall,
+        'val_recall': val_recall,
+        'auc': auc,
+        'val_auc': val_auc
+    }
+
+    
+
+
 
     # Plot the training metrics
     plot_path = os.path.join(result_path_name, 'pre_training_')
