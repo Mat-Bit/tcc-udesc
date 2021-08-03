@@ -1,13 +1,12 @@
+import tensorflow as tf
 import math
 import os
 import argparse
 import matplotlib
 import imghdr
-import pickle as pkl
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import tensorflow as tf
 import time
 
 from tensorflow.keras.applications.xception import Xception, preprocess_input
@@ -16,10 +15,9 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
-from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
+from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_curve
 
 
 matplotlib.use('Agg')
@@ -30,10 +28,10 @@ parser.add_argument('dataset_root')
 parser.add_argument('result_root')
 parser.add_argument('--epochs_pre', type=int, default=10)
 parser.add_argument('--epochs_fine', type=int, default=50)
-parser.add_argument('--batch_size_pre', type=int, default=32)
-parser.add_argument('--batch_size_fine', type=int, default=32)
-parser.add_argument('--lr_pre', type=float, default=1e-3)
-parser.add_argument('--lr_fine', type=float, default=2e-4)
+parser.add_argument('--batch_size_pre', type=int, default=16)
+parser.add_argument('--batch_size_fine', type=int, default=16)
+parser.add_argument('--lr_pre', type=float, default=5e-4)
+parser.add_argument('--lr_fine', type=float, default=1e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.25)
 parser.add_argument('--dropout', type=float, default=0.5)
@@ -64,23 +62,6 @@ def generate_from_paths_and_labels(
             yield (inputs, labels[i:i+batch_size])
 
 
-def generate_from_paths(
-        input_paths, batch_size, input_size=(299, 299)):
-    num_samples = len(input_paths)
-    while 1:
-        for i in range(0, num_samples, batch_size):
-            inputs = list(map(
-                lambda x: image.load_img(x, target_size=input_size),
-                input_paths[i:i+batch_size]
-            ))
-            inputs = np.array(list(map(
-                lambda x: image.img_to_array(x),
-                inputs
-            )))
-            inputs = preprocess_input(inputs)
-            yield inputs
-
-
 def plot_metrics(history, name_path, title):
     metrics = ['accuracy', 'loss', 'precision', 'recall']
     plt.figure(figsize=(8,8))
@@ -102,35 +83,7 @@ def plot_metrics(history, name_path, title):
         plt.legend()
     plt.savefig(name_path + 'fit_metrics.png')
     plt.clf()
-
-
-# Define the 'plot_auroc' function
-# def plot_auroc(name, labels, predictions, **kwargs):
-#     fp, tp, _ = roc_curve(labels, predictions)
-#     auROC = 1 - roc_auc_score(labels, predictions)
-#     plt.plot(fp, tp, label=name + ' (AUC = %0.3f)' % auROC, linewidth=2, **kwargs)
-#     plt.xlabel('False positives [%]')
-#     plt.ylabel('True positives [%]')
-#     plt.xlim([-0.05,1.05])
-#     plt.ylim([-0.05,1.05])
-#     plt.legend(loc='lower right')
-
-#     plt.savefig(os.path.join(args.result_root, 'auroc.png'))
-#     plt.clf()
-
-
-
-# def plot_roc(name, labels, predictions, **kwargs):
-#     fp, tp, _ = roc_curve(labels, predictions)
-
-#     plt.plot(fp, tp, label=name, linewidth=2, **kwargs)
-#     plt.xlabel('False positives [%]')
-#     plt.ylabel('True positives [%]')
-#     plt.xlim([-0.05,0.40])
-#     plt.ylim([0.6,1.05])
-#     plt.grid(True)
-#     ax = plt.gca()
-#     ax.set_aspect('equal')
+    plt.close()
 
 
 def main(args):
@@ -153,15 +106,14 @@ def main(args):
         os.makedirs(result_path_name)
 
 
-    classes = os.listdir(args.dataset_root)
-    num_classes = len(classes)
+    classes_dir = [class_path for class_path in os.listdir(args.dataset_root) if os.path.isdir(os.path.join(args.dataset_root, class_path))]
+    num_classes = len(classes_dir)
 
     # make input_paths and labels
     input_paths, labels = [], []
-    classes_dir = [class_path for class_path in os.listdir(args.dataset_root) if os.path.isdir(os.path.join(args.dataset_root, class_path))]
     for class_name in classes_dir:
         class_root = os.path.join(args.dataset_root, class_name)
-        class_id = classes.index(class_name)
+        class_id = classes_dir.index(class_name)
         for path in os.listdir(class_root):
             path = os.path.join(class_root, path)
             if imghdr.what(path) is None:
@@ -173,6 +125,7 @@ def main(args):
     with open(f'{result_path_name}/parameters.txt', 'w') as file:
         file.write(f"\tTeste: {args.name}\n\n")
 
+        file.write(f"Classes: {classes_dir};\n")
         file.write(f"Diretorio Dataset: {args.dataset_root};\n")
         file.write(f"Diretorio dos Resultados: {result_path_name};\n")
         file.write(f"Tamanho do Dataset: {len(input_paths)} imagens;\n\n")
@@ -196,10 +149,10 @@ def main(args):
     input_paths = np.array(input_paths)
 
     # split dataset for training and test
-    train_input_paths, test_input_paths, train_labels, test_labels = train_test_split(input_paths, labels, test_size=args.test_split, shuffle=True, random_state=47)
+    train_input_paths, test_input_paths, train_labels, test_labels = train_test_split(input_paths, labels, test_size=args.test_split, shuffle=True, random_state=42)
 
     # split the training dataset for training and validation
-    train_input_paths, val_input_paths, train_labels, val_labels = train_test_split(train_input_paths, train_labels, test_size=args.val_split, shuffle=True, random_state=26)
+    train_input_paths, val_input_paths, train_labels, val_labels = train_test_split(train_input_paths, train_labels, test_size=args.val_split, shuffle=True, random_state=24)
 
     print("Training on %d images and labels" % (len(train_input_paths)))
     print("Validation on %d images and labels" % (len(val_input_paths)))
@@ -232,16 +185,9 @@ def main(args):
                                  save_weights_only=False, 
                                  verbose=1, 
                                  save_best_only=True, 
-                                 mode='max')
-    
-    # Create a callback to early stop the training when the validation loss doesn't improve
-    early_stop = EarlyStopping(monitor='val_loss',
-                               min_delta=0.05,
-                               patience=4,
-                               verbose=1,
-                               mode='auto')
+                                 mode='max')  
 
-    custom_callbacks = [csv_logger, checkpoint, early_stop]
+    custom_callbacks = [csv_logger, checkpoint]
 
     # ====================================================
     # Build a custom Xception
@@ -369,20 +315,6 @@ def main(args):
     with open(os.path.join(result_path_name, 'parameters.txt'), 'a') as f:
         f.write('\nTest accuracy: {:.4f}.\n'.format(score[1]))
         f.write('Test loss: {:.4f}.\n'.format(score[0]))
-
-    # Plot the auroc graph on the test dataset
-    # plot_path = os.path.join(result_path_name, 'test_auroc_')
-    # plot_auroc(model, test_dataset, plot_path, 'Test')
-
-
-    # plot_path = os.path.join(result_path_name, 'auroc_')
-    # plot_auroc(hist_fine, plot_path, 'AUROC')
-
-
-    # # Plot the ROC curve
-    # plot_roc("Test", test_labels, test_predictions_baseline)
-    # plt.savefig(os.path.join(args.result_root, 'auroc.png'))
-    # plt.clf()
 
 
 if __name__ == '__main__':

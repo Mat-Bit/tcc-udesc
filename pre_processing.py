@@ -1,10 +1,7 @@
 # import the necessary packages
-from multiprocessing import process
-from multiprocessing.context import Process
 import numpy as np
 import cv2
 import os
-import matplotlib.pyplot as plt
 import time
 import multiprocessing as mp
 
