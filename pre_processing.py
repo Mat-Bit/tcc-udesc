@@ -2,7 +2,6 @@
 from multiprocessing import process
 from multiprocessing.context import Process
 import numpy as np
-from PIL import Image
 import cv2
 import os
 import matplotlib.pyplot as plt
@@ -44,13 +43,13 @@ def pre_processing(image_path_filename, saved_location):
 
 # main function
 def main():
-    IMAGE_ROOT_PATH = '../dataset_sadalla/dataset_fo_unicas_10N_10G_JPG'
+    IMAGE_ROOT_PATH = '../dataset_sadalla/dataset_fo_unicas_1400N_1400G_jpeg'
     saved_location = IMAGE_ROOT_PATH + '_processed_dataset'
 
     if os.path.exists(saved_location) is False:
         os.mkdir(saved_location)
 
-    classes = os.listdir(IMAGE_ROOT_PATH)
+    classes = [class_path for class_path in os.listdir(IMAGE_ROOT_PATH) if os.path.isdir(os.path.join(IMAGE_ROOT_PATH, class_path))]
     path_images = []
 
     for class_name in classes:
@@ -78,7 +77,7 @@ def main():
     pool.join()
 
     end_time = time.time()
-    print("Pre processing completed in {:.2f}s".format(end_time - start_time))
+    print("Pre processing {} images completed in {:.2f}s".format(len(path_images), end_time - start_time))
 
 
 if __name__ == '__main__':
