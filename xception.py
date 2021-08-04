@@ -18,6 +18,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import roc_curve, auc
 
 
 matplotlib.use('Agg')
@@ -31,9 +32,9 @@ parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=16)
 parser.add_argument('--batch_size_fine', type=int, default=16)
 parser.add_argument('--lr_pre', type=float, default=5e-4)
-parser.add_argument('--lr_fine', type=float, default=1e-4)
+parser.add_argument('--lr_fine', type=float, default=2e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
-parser.add_argument('--val_split', type=float, default=0.25)
+parser.add_argument('--val_split', type=float, default=0.3)
 parser.add_argument('--dropout', type=float, default=0.5)
 
 
@@ -91,13 +92,30 @@ def plot_metrics(history, path):
     plt.close()
 
 
+def plot_roc_curve(y_test, y_score, path):
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
+    plt.figure(figsize=(8,8))
+    plt.title('Curva ROC conjunto de Teste')
+    plt.plot(fpr, tpr, label='AUC = %0.2f' % roc_auc)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlim([-0.01, 1.01])
+    plt.ylim([-0.01, 1.01])
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    filename = os.path.join(path, 'roc_curve.png')
+    plt.savefig(filename)
+    plt.clf()
+    plt.close()
+
+
 def main(args):
 
     # ====================================================
     # Preparation
     # ====================================================
     # parameters
-    epochs = args.epochs_pre + args.epochs_fine
     args.dataset_root = os.path.expanduser(args.dataset_root)
     args.result_root = os.path.expanduser(args.result_root)
 
@@ -162,6 +180,12 @@ def main(args):
     print("Training on %d images and labels" % (len(train_input_paths)))
     print("Validation on %d images and labels" % (len(val_input_paths)))
     print("Test on %d images and labels" % (len(test_input_paths)))
+
+    # write the number of images in each dataset at 'parameters.txt'
+    with open(f'{result_path_name}/parameters.txt', 'a') as file:
+        file.write(f"\n\tTreino: {len(train_input_paths)} ({(len(train_input_paths) / len(input_paths)) * 100} %);\n")
+        file.write(f"\tVal: {len(val_input_paths)} ({(len(val_input_paths) / len(input_paths)) * 100} %);\n")
+        file.write(f"\tTeste: {len(test_input_paths)} ({(len(test_input_paths) / len(input_paths)) * 100} %);\n")
 
     df = pd.DataFrame(columns=['Image', 'Subset', 'Label'])
 
@@ -293,7 +317,8 @@ def main(args):
     # ====================================================
 
     # concatinate plot data
-    epochs = hist_pre.history['epoch']
+    epochs = list(range(1, args.epochs_pre + args.epochs_fine + 1))
+
     acc = hist_pre.history['accuracy']
     val_acc = hist_pre.history['val_accuracy']
     loss = hist_pre.history['loss']
@@ -305,7 +330,6 @@ def main(args):
     auc = hist_pre.history['auc']
     val_auc = hist_pre.history['val_auc']
 
-    epochs.extend(hist_fine.history['epoch'])
     acc.extend(hist_fine.history['accuracy'])
     val_acc.extend(hist_fine.history['val_accuracy'])
     loss.extend(hist_fine.history['loss'])
@@ -358,6 +382,16 @@ def main(args):
         f.write('Test precision: {:.4f}.\n'.format(score[2]))
         f.write('Test recall: {:.4f}.\n'.format(score[3]))
         f.write('Test auc: {:.4f}.\n'.format(score[4]))
+    
+    # Get predictions on test dataset and plot roc_curve
+    predictions = model.predict(
+        test_dataset,
+        steps=math.ceil(len(test_input_paths) / args.batch_size_pre),
+        verbose=1
+    )
+
+    # Plot the roc curve
+    plot_roc_curve(test_labels, predictions, result_path_name)
 
 
 if __name__ == '__main__':
