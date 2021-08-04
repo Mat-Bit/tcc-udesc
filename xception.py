@@ -383,7 +383,7 @@ def main(args):
         f.write('Test recall: {:.4f}.\n'.format(score[3]))
         f.write('Test auc: {:.4f}.\n'.format(score[4]))
     
-    # Get predictions on test dataset and plot roc_curve
+    # Get predictions on test dataset
     predictions = model.predict(
         test_dataset,
         steps=math.ceil(len(test_input_paths) / args.batch_size_pre),
