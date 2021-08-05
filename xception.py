@@ -31,10 +31,10 @@ parser.add_argument('--epochs_pre', type=int, default=10)
 parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=16)
 parser.add_argument('--batch_size_fine', type=int, default=16)
-parser.add_argument('--lr_pre', type=float, default=5e-4)
+parser.add_argument('--lr_pre', type=float, default=2e-4)
 parser.add_argument('--lr_fine', type=float, default=2e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
-parser.add_argument('--val_split', type=float, default=0.3)
+parser.add_argument('--val_split', type=float, default=0.22222)
 parser.add_argument('--dropout', type=float, default=0.5)
 
 
@@ -172,10 +172,10 @@ def main(args):
     input_paths = np.array(input_paths)
 
     # split dataset for training and test
-    train_input_paths, test_input_paths, train_labels, test_labels = train_test_split(input_paths, labels, test_size=args.test_split, shuffle=True, random_state=42)
+    train_input_paths, test_input_paths, train_labels, test_labels = train_test_split(input_paths, labels, test_size=args.test_split, shuffle=True, random_state=48)
 
     # split the training dataset for training and validation
-    train_input_paths, val_input_paths, train_labels, val_labels = train_test_split(train_input_paths, train_labels, test_size=args.val_split, shuffle=True, random_state=24)
+    train_input_paths, val_input_paths, train_labels, val_labels = train_test_split(train_input_paths, train_labels, test_size=args.val_split, shuffle=True, random_state=93)
 
     print("Training on %d images and labels" % (len(train_input_paths)))
     print("Validation on %d images and labels" % (len(val_input_paths)))
@@ -183,9 +183,10 @@ def main(args):
 
     # write the number of images in each dataset at 'parameters.txt'
     with open(f'{result_path_name}/parameters.txt', 'a') as file:
-        file.write(f"\n\tTreino: {len(train_input_paths)} ({(len(train_input_paths) / len(input_paths)) * 100} %);\n")
-        file.write(f"\tVal: {len(val_input_paths)} ({(len(val_input_paths) / len(input_paths)) * 100} %);\n")
-        file.write(f"\tTeste: {len(test_input_paths)} ({(len(test_input_paths) / len(input_paths)) * 100} %);\n")
+        file.write(f"\n\n\t Separacao do Dataset em conjuntos:")
+        file.write(f"\nTreino: {len(train_input_paths)} ({(len(train_input_paths) / len(input_paths)) * 100} %);\n")
+        file.write(f"Val: {len(val_input_paths)} ({(len(val_input_paths) / len(input_paths)) * 100} %);\n")
+        file.write(f"Teste: {len(test_input_paths)} ({(len(test_input_paths) / len(input_paths)) * 100} %);\n")
 
     df = pd.DataFrame(columns=['Image', 'Subset', 'Label'])
 
@@ -390,8 +391,11 @@ def main(args):
         verbose=1
     )
 
+    print()
+    print("Predictions test:", predictions)
+
     # Plot the roc curve
-    plot_roc_curve(test_labels, predictions, result_path_name)
+    # plot_roc_curve(test_labels, predictions, result_path_name)
 
 
 if __name__ == '__main__':

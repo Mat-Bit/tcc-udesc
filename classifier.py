@@ -3,11 +3,12 @@ import numpy as np
 from tensorflow.keras.applications.xception import preprocess_input
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.models import load_model
+import os
+import pandas as pd
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument('model')
-parser.add_argument('classes')
-parser.add_argument('image')
+parser.add_argument('result_path')
 parser.add_argument('--top_n', type=int, default=2)
 
 
@@ -59,8 +60,54 @@ def generate_from_paths(
 
 def main(args):
 
+    result_path_name = os.path.expanduser(args.result_path)
+    model_file = os.path.join(result_path_name, 'model_trained.h5')
+    dataset_desc_file = os.path.join(result_path_name, 'dataset_desc.csv')
+    training_log_file = os.path.join(result_path_name, 'training_log.csv')
+    params_file = os.path.join(result_path_name, 'parameters.txt')
+
+    df_dataset = pd.read_csv(dataset_desc_file)    
+
+    df_log_train = pd.read_csv(training_log_file)
+    
+    # Pegar a linha que contem os valores maximos de 'accuracy'
+    index_best_val_acc = df_log_train['accuracy'].argmax()
+    
+    row_best_val_acc = df_log_train.loc[index_best_val_acc, :]
+    
+    print("Best metrics in Training Set")
+    for met in row_best_val_acc.index:
+        if met[0:3] != 'val':
+            print("{}: {:.3f};".format(met, row_best_val_acc[met]))
+
+    
+    # Pegar a linha que contem os valores maximos de 'val_accuracy'
+    print()
+    index_best_val_acc = df_log_train['val_accuracy'].argmax()
+    
+    row_best_val_acc = df_log_train.loc[index_best_val_acc, :]
+    
+    print("Best metrics in Validation Set")
+    for met in row_best_val_acc.index:
+        if met[0:3] == 'val':
+            print("{}: {:.3f};".format(met, row_best_val_acc[met]))
+
+
+    # Pegar as metricas do teste
+    with open(params_file, 'r') as f:
+        lines = f.readlines()
+        
+    for line in lines:
+        if line[0:4] == "Test":
+            print(line)
+        
+        if line[0:5] == "Tempo":
+            print(line)
+
+    exit()
+
     # create model
-    model = load_model(args.model)
+    model = load_model(model_file)
 
     # load class names
     classes = []
