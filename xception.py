@@ -18,7 +18,6 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import roc_curve, auc
 
 
 matplotlib.use('Agg')
@@ -27,15 +26,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('name')
 parser.add_argument('dataset_root')
 parser.add_argument('result_root')
+parser.add_argument('--batch_size', type=int, default=16)
+parser.add_argument('--dropout', type=float, default=0.5)
 parser.add_argument('--epochs_pre', type=int, default=10)
 parser.add_argument('--epochs_fine', type=int, default=50)
-parser.add_argument('--batch_size_pre', type=int, default=16)
-parser.add_argument('--batch_size_fine', type=int, default=16)
 parser.add_argument('--lr_pre', type=float, default=2e-4)
 parser.add_argument('--lr_fine', type=float, default=2e-4)
 parser.add_argument('--test_split', type=float, default=0.1)
 parser.add_argument('--val_split', type=float, default=0.22222)
-parser.add_argument('--dropout', type=float, default=0.5)
 
 
 METRICS = [
@@ -92,26 +90,7 @@ def plot_metrics(history, path):
     plt.close()
 
 
-def plot_roc_curve(y_test, y_score, path):
-    fpr, tpr, _ = roc_curve(y_test, y_score)
-    roc_auc = auc(fpr, tpr)
-    plt.figure(figsize=(8,8))
-    plt.title('Curva ROC conjunto de Teste')
-    plt.plot(fpr, tpr, label='AUC = %0.2f' % roc_auc)
-    plt.legend(loc='lower right')
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlim([-0.01, 1.01])
-    plt.ylim([-0.01, 1.01])
-    plt.ylabel('True Positive Rate')
-    plt.xlabel('False Positive Rate')
-    filename = os.path.join(path, 'roc_curve.png')
-    plt.savefig(filename)
-    plt.clf()
-    plt.close()
-
-
 def main(args):
-
     # ====================================================
     # Preparation
     # ====================================================
@@ -153,16 +132,15 @@ def main(args):
         file.write(f"Diretorio dos Resultados: {result_path_name};\n")
         file.write(f"Tamanho do Dataset: {len(input_paths)} imagens;\n\n")
 
-        file.write(f"Dropout Regularization: {args.dropout};\n\n")
+        file.write(f"Dropout Regularization: {args.dropout};\n")
+        file.write(f"Batch Size: {args.batch_size};\n\n")
 
         file.write(f"\tPre-treino (apenas ultima camada):\n")
         file.write(f"Epocas: {args.epochs_pre};\n")
-        file.write(f"Batch Size: {args.batch_size_pre};\n")
         file.write(f"Learning Rate: {args.lr_pre};\n\n")
 
         file.write(f"\tFine Tunning de toda Arquitetura:\n")
         file.write(f"Epocas: {args.epochs_fine};\n")
-        file.write(f"Batch Size: {args.batch_size_fine};\n")
         file.write(f"Learning Rate: {args.lr_fine};\n")
 
     # convert to one-hot-vector format
@@ -255,12 +233,12 @@ def main(args):
     train_dataset = generate_from_paths_and_labels(
         input_paths=train_input_paths,
         labels=train_labels,
-        batch_size=args.batch_size_pre
+        batch_size=args.batch_size
     )
     validation_dataset = generate_from_paths_and_labels(
         input_paths=val_input_paths,
         labels=val_labels,
-        batch_size=args.batch_size_pre
+        batch_size=args.batch_size
     )
 
     # start count time
@@ -270,11 +248,11 @@ def main(args):
     hist_pre = model.fit(
         train_dataset,
         steps_per_epoch = math.ceil(
-            len(train_input_paths) / args.batch_size_pre),
+            len(train_input_paths) / args.batch_size),
         epochs = args.epochs_pre,
         validation_data = validation_dataset,
         validation_steps=math.ceil(
-            len(val_input_paths) / args.batch_size_pre),
+            len(val_input_paths) / args.batch_size),
         verbose=1,
         callbacks=custom_callbacks
     )
@@ -297,11 +275,11 @@ def main(args):
     hist_fine = model.fit(
         train_dataset,
         steps_per_epoch = math.ceil(
-            len(train_input_paths) / args.batch_size_fine),
+            len(train_input_paths) / args.batch_size),
         epochs = args.epochs_fine,
         validation_data = validation_dataset,
         validation_steps=math.ceil(
-            len(val_input_paths) / args.batch_size_fine),
+            len(val_input_paths) / args.batch_size),
         verbose=1,
         callbacks=custom_callbacks
     )
@@ -363,13 +341,13 @@ def main(args):
     test_dataset = generate_from_paths_and_labels(
         input_paths=test_input_paths,
         labels=test_labels,
-        batch_size=args.batch_size_pre
+        batch_size=args.batch_size
     )
 
     # Evaluate the model on the test dataset
     score = model.evaluate(
         test_dataset,
-        steps=math.ceil(len(test_input_paths) / args.batch_size_pre),
+        steps=math.ceil(len(test_input_paths) / args.batch_size),
         verbose=1
     )
 
@@ -383,19 +361,6 @@ def main(args):
         f.write('Test precision: {:.4f}.\n'.format(score[2]))
         f.write('Test recall: {:.4f}.\n'.format(score[3]))
         f.write('Test auc: {:.4f}.\n'.format(score[4]))
-    
-    # Get predictions on test dataset
-    predictions = model.predict(
-        test_dataset,
-        steps=math.ceil(len(test_input_paths) / args.batch_size_pre),
-        verbose=1
-    )
-
-    print()
-    print("Predictions test:", predictions)
-
-    # Plot the roc curve
-    # plot_roc_curve(test_labels, predictions, result_path_name)
 
 
 if __name__ == '__main__':

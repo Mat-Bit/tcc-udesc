@@ -13,7 +13,7 @@ from sklearn.metrics import roc_curve, auc
 
 #%% Definindo o camino do result e as variaveis com nomes dos arquivos
 
-RESULT_PATH = '../resultados/Raw-03_Final_0_2222_val_split_raw_16B_0_2_lr_05_dp/'
+RESULT_PATH = '../results/Processed-03_Final_0_2222_val_split_processed_16B_0_2_lr_05_dp/'
 
 result_path_name = os.path.expanduser(RESULT_PATH)
 model_file = os.path.join(result_path_name, 'model_trained.h5')
@@ -44,7 +44,6 @@ for met in row_best_val_acc.index:
     
 #%% Pegar a linha que contem os valores maximos de 'val_accuracy'
 
-print()
 index_best_val_acc = df_log_train['val_accuracy'].argmax()
 
 row_best_val_acc = df_log_train.loc[index_best_val_acc, :]
@@ -53,6 +52,59 @@ print("Best metrics in Validation Set")
 for met in row_best_val_acc.index:
     if met[0:3] == 'val':
         print("{}: {:.3f};".format(met, row_best_val_acc[met]))
+        
+
+#%% Arrumar o valor das epocas no dataframe
+
+offset = 0
+
+for i in range(len(df_log_train)):
+    if i > df_log_train.loc[i, 'epoch'] and offset == 0:
+        offset = i
+        df_log_train.loc[i, 'epoch'] += offset
+    elif i > df_log_train.loc[i, 'epoch']:
+        df_log_train.loc[i, 'epoch'] += offset
+
+
+#%% Plotando as métricas 'accuracy' 'loss', 'precision' e 'recall' contidas no dataframe de log
+# em uma figura com duas linhas e duas colunas e dos conjuntos de treino e validação
+
+metrics = ['accuracy', 'loss', 'precision', 'recall']
+
+plt.figure(figsize=(9,9))
+
+for n, metric in enumerate(metrics):
+    if metric == 'accuracy':
+        name = 'Acurácia'
+    elif metric == 'loss':
+        name = 'Perda'
+    elif metric == 'precision':
+        name = 'Precisão'
+    elif metric == 'recall':
+        name = 'Sensibilidade'
+    
+    x = df_log_train['epoch'].tolist()
+    y_train = df_log_train[metric].tolist()
+    y_val = df_log_train['val_' + metric].tolist()
+    
+    plt.subplot(2,2,n+1)
+    plt.plot(x, y_train, label='Treinamento')
+    plt.plot(x, y_val, linestyle="--", label='Validação')
+    
+    if n >= len(metrics) // 2:
+        plt.xlabel('Épocas')
+    plt.ylabel(name)
+    
+    if metric == 'loss':
+        plt.ylim([-0.05, 1.1])
+    else:
+        plt.ylim([0.4,1.05])
+
+    plt.legend()
+
+filename = os.path.join(result_path_name, 'fit_metrics_br.png')
+plt.savefig(filename)
+plt.clf()
 
 
 #%% Plotando o balanceamento das bases
@@ -132,7 +184,6 @@ ax.bar_label(rects2, padding=3)
 
 fig.tight_layout()
 plt.savefig(os.path.join(result_path_name, 'balance_plot.png'))
-plt.show()
 plt.clf()
 
 
