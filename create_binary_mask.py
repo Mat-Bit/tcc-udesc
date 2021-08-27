@@ -14,8 +14,8 @@ def create_binary_mask(image_path_filename, saved_location, label, image_base_na
 
     r_binary = np.zeros_like(r)
     r_binary[r > 28] = 1
-    kernel = np.ones((3, 3), np.uint8)
-    r_binary = cv2.morphologyEx(r_binary, cv2.MORPH_OPEN, kernel)
+    kernel = np.ones((5, 5), np.uint8)
+    r_binary = cv2.morphologyEx(r_binary, cv2.MORPH_CLOSE, kernel)
     r_binary = r_binary.astype(np.uint8)
     r_binary = r_binary * 255
 
@@ -27,7 +27,7 @@ def create_binary_mask(image_path_filename, saved_location, label, image_base_na
 # main function
 def main():
     IMAGE_ROOT_PATH = '../dataset_sadalla/dataset_fo_unicas_10N_10G_JPG'
-    saved_location = IMAGE_ROOT_PATH + '_binary_mask'
+    saved_location = IMAGE_ROOT_PATH + '_binary_mask_closing_k5'
 
     if os.path.exists(saved_location) is False:
         os.mkdir(saved_location)
